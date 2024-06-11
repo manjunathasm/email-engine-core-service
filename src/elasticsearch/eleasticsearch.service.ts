@@ -2,7 +2,6 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { AppLogger } from 'src/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import { v4 as uuid } from 'uuid';
-import { filter } from 'rxjs';
 
 @Injectable()
 export class ElasticService {
