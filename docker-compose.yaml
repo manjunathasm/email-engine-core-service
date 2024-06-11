@@ -1,0 +1,25 @@
+version: '3'
+services:
+  app:
+    build: .
+    ports:
+      - '3000:3000'
+    environment:
+      - ELASTICSEARCH_NODE=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=v6IimvAc5gyvgrmuCjSL
+      - ELASTICSEARCH_EMAIL_INDEX=emails
+      - ELASTICSEARCH_USER_INDEX=users
+      - ELASTICSEARCH_EMAIL_FOLDER_INDEX=email_folders
+      - OUTLOOK_CLIENT_ID=clientid
+      - OUTLOOK_CLIENT_SECRET=clientsecrete
+      - CALLBACK_URL=http://localhost:3000/auth/outlook/redirect
+    depends_on:
+      - elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:latest
+    environment:
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD=v6IimvAc5gyvgrmuCjSL
+    ports:
+      - '9200:9200'

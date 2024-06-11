@@ -1,0 +1,30 @@
+export enum ERROR_CODE {
+  BAD_REQUEST = 'bad_request',
+  INVALID_CREDENTIALS = 'invalid_credentials',
+  UNAUTHORIZED = 'unauthorized',
+  INVALID_TOKEN = 'invalid_token',
+  TOKEN_MISSING = 'token_missing',
+  TOKEN_EXPIRED = 'token_expired',
+  NOT_SUPPORTED = 'not_supported',
+  NOT_FOUND = 'not_found',
+  MISSING_PARAM = 'missing_param',
+  INVALID_PARAM = 'invalid_param',
+  DUPLICATE = 'duplicate',
+  MISSING_DATA = 'missing_data',
+  INVALID_DATA = 'invalid_data',
+  NOT_SYNC = 'not_sync',
+  NOT_ALLOWED = 'not_allowed',
+  VALIDATION = 'validation',
+  INTEGRATION_ERROR = 'integration_error',
+  METHOD_NOT_ALLOWED = 'method_not_allowed',
+  TRANSIENT_ERROR = 'transient_error',
+  NOT_CREATED = 'not_created',
+  NOT_UPDATED = 'not_updated',
+  CONFLICT = 'conflict',
+  INVALID_CAPTCHA = 'invalid_captcha',
+}
+
+export const ERROR_MAP = new Map<string, string>([
+  [ERROR_CODE.NOT_SUPPORTED, 'Not Supported'],
+  [ERROR_CODE.NOT_FOUND, 'Not Found'],
+]);

@@ -1,0 +1,23 @@
+/* Add custom CSS styles here */
+
+/* Custom styles for specific elements not covered by Tailwind */
+body {
+  padding-top: 4.5rem;
+}
+
+.list-group-item {
+  cursor: pointer;
+}
+
+.list-group-item:hover {
+  background-color: #f0f0f0;
+}
+
+/* Custom button styles */
+.btn-secondary {
+  @apply bg-gray-600 border-gray-600 text-white;
+}
+
+.btn-secondary:hover {
+  @apply bg-gray-700 border-gray-700;
+}
