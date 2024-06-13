@@ -13,7 +13,10 @@ services:
       - ELASTICSEARCH_EMAIL_FOLDER_INDEX=email_folders
       - OUTLOOK_CLIENT_ID=clientid
       - OUTLOOK_CLIENT_SECRET=clientsecrete
+      - OUTLOOK_IDENTITY_API_BASE_URL=https://login.microsoftonline.com/common/oauth2/v2.0
+      - OUTLOOK_API_BASE_URL=https://outlook.office.com/api/v2.0
       - CALLBACK_URL=http://localhost:3000/auth/outlook/redirect
+      - WEBHOOK_NOTIFICATION_URL="https://{{domain name}}/auth/outlook/notification"
     depends_on:
       - elasticsearch
   elasticsearch:
