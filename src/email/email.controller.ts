@@ -12,6 +12,14 @@ export class EmailController {
     return this.emailService.getFolders(user.email);
   }
 
+  @Get('conversation/:id')
+  async getEmail(
+    @Param('id') id: string,
+    @Query('subscriptionId') subscriptionId: string,
+  ): Promise<any> {
+    return this.emailService.getEmail(subscriptionId, { Id: id });
+  }
+
   @Get('conversations/:parentFolderId')
   async getEmails(
     @Param('parentFolderId') parentFolderId: string,

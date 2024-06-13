@@ -10,9 +10,11 @@ import { ElasticModule } from './elasticsearch/elasticsearch.module';
 import { EmailModule } from './email/email.module';
 import { RateLimiterGuard, RateLimiterModule } from 'nestjs-rate-limiter';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     RateLimiterModule,
     HttpModule,
     CommonModule,

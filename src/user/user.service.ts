@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { MailboxMonitorService } from 'src/elasticsearch/mailbox-monitor.service';
 import { User } from './user.interface';
 import { ElasticService } from 'src/elasticsearch/eleasticsearch.service';
 import { HttpService } from '@nestjs/axios';
@@ -11,57 +10,98 @@ export class UserService {
   userIndex = process.env.ELASTICSEARCH_USER_INDEX || 'users';
   constructor(
     private readonly httpService: HttpService,
-    private readonly mailboxMonitorService: MailboxMonitorService,
     private readonly elasticService: ElasticService,
   ) {}
 
-  async findOrCreate(email, accessToken, refreshToken): Promise<User> {
-    await this.elasticService.indexUser(email, {
-      email,
-      accessToken,
-      refreshToken,
-    });
+  async findOrCreate(email: string, user: Partial<User>): Promise<User> {
+    await this.elasticService.indexUser(email, user);
     return await this.findByEmail(email);
+  }
+
+  async findByUserId(userId: string): Promise<User> {
+    return await this.elasticService.getUserByUserId(userId);
   }
 
   async findByEmail(email: string): Promise<User> {
     return (await this.elasticService.getById(email, this.userIndex)) as User;
   }
 
+  async findAllUsers(): Promise<User[]> {
+    return await this.elasticService.getAllUsers();
+  }
+
+  async updateUser(email: string, user: Partial<User>) {
+    await this.elasticService.indexUser(email, user);
+  }
+
   async syncEmailsFoldersData(user: any) {
     try {
-      // sync folders data
-      const response = await this.httpService
-        .get('https://outlook.office.com/api/v2.0/me/mailFolders', {
-          headers: {
-            authorization: `Bearer ${user.accessToken}`,
-          },
-        })
-        .toPromise();
-      const foldersData = response.data.value;
+      let url = `${process.env.OUTLOOK_API_BASE_URL}/me/mailFolders`;
+      do {
+        // sync folders data
+        const response = await this.httpService
+          .get(url, {
+            headers: { authorization: `Bearer ${user.accessToken}` },
+          })
+          .toPromise();
+        const foldersData = response.data.value;
 
-      this.elasticService.indexEmailsFolders(user.email, foldersData);
+        this.elasticService.indexEmailsFolders(user.email, foldersData);
+        url = response.data['@odata.nextLink'];
+      } while (url);
     } catch (error) {
-      this.logger.error('Error syncing mailbox folders data:', error);
+      this.logger.error(
+        'Error syncing mailbox folders data: ' + error.toString(),
+      );
     }
   }
 
   async syncEmailsData(user: any) {
     try {
-      // sync emails data
-      const response = await this.httpService
-        .get('https://outlook.office.com/api/v2.0/me/messages', {
-          headers: {
-            authorization: `Bearer ${user.accessToken}`,
-          },
-        })
-        .toPromise();
-      const emailData = response.data.value;
+      let url = `${process.env.OUTLOOK_API_BASE_URL}/me/messages`;
+      do {
+        // sync emails data
+        const response = await this.httpService
+          .get(url, {
+            headers: { authorization: `Bearer ${user.accessToken}` },
+          })
+          .toPromise();
+        const emailData = response.data.value;
 
-      this.mailboxMonitorService.updateElasticsearch(user.email, emailData);
+        await this.elasticService.indexEmails(user.email, emailData);
+        url = response.data['@odata.nextLink'];
+      } while (url);
     } catch (error) {
-      this.logger.error('Error syncing mailbox emails data:', error);
+      this.logger.error(
+        'Error syncing mailbox emails data: ' + error.toString(),
+      );
     }
+  }
+
+  async syncEmailsDelta(subscriptionId: string, ResourceData: any) {
+    const user =
+      await this.elasticService.getUserBySubscriptionId(subscriptionId);
+    const response = await this.httpService
+      .get(
+        user.deltaLink ||
+          `${process.env.OUTLOOK_API_BASE_URL}/me/messages/${ResourceData.Id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${user.accessToken}`,
+          },
+        },
+      )
+      .toPromise();
+
+    const email = response.data;
+
+    await this.elasticService.indexEmails(user.userId, [email]);
+
+    // Save new deltaLink for future syncs
+    await this.updateUser(user.email, {
+      deltaLink: response.data['@odata.deltaLink'],
+    });
+    return email;
   }
 
   async clearMailboxData(userEmail: string) {

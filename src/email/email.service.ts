@@ -24,6 +24,10 @@ export class EmailService {
     );
   }
 
+  async getEmail(subscriptionId: string, ResourceData: any) {
+    return await this.userService.syncEmailsDelta(subscriptionId, ResourceData);
+  }
+
   async searchEmails(q, userEmail, page, pageSize) {
     return await this.elasticService.searchEmails(q, userEmail, page, pageSize);
   }

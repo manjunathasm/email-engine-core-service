@@ -1,7 +1,9 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { AppLogger } from 'src/common';
+import { User } from 'src/user/user.interface';
 import { UserService } from 'src/user/user.service';
+import { WebhookService } from 'src/webhook/webhook.service';
 
 @Injectable()
 export class AuthService {
@@ -9,6 +11,7 @@ export class AuthService {
   constructor(
     private readonly httpService: HttpService,
     private readonly userService: UserService,
+    private readonly webhookService: WebhookService,
   ) {}
 
   async syncMailbox(user: any) {
@@ -16,9 +19,9 @@ export class AuthService {
     await this.userService.syncEmailsData(user);
   }
 
-  async refreshToken(userEmail: string) {
+  async refreshToken(userEmail: string): Promise<User> {
     const user = await this.userService.findByEmail(userEmail);
-    const url = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
+    const url = `${process.env.OUTLOOK_IDENTITY_API_BASE_URL}/token`;
     const headers = {
       'Content-Type': 'application/x-www-form-urlencoded',
     };
@@ -33,30 +36,42 @@ export class AuthService {
       await this.httpService.post(url, data, { headers }).toPromise()
     ).data;
 
-    return await this.userService.findOrCreate(
-      user.email,
-      rtoken.access_token,
-      rtoken.refresh_token,
-    );
+    await this.userService.updateUser(user.email, {
+      accessToken: rtoken.access_token,
+      refreshToken: rtoken.refresh_token,
+    });
+    return {
+      ...user,
+      accessToken: rtoken.access_token,
+      refreshToken: rtoken.refresh_token,
+    };
+  }
+
+  async handleNotification(body: any) {
+    for (const notification of body.value) {
+      const { subscriptionId, ResourceData } = notification.ResourceData;
+
+      if (ResourceData) {
+        await this.userService.syncEmailsDelta(subscriptionId, ResourceData);
+      }
+    }
   }
 
   async logout(userEmail: string): Promise<void> {
     try {
       const user = await this.userService.findByEmail(userEmail);
 
-      await this.httpService
-        .post(
-          'https://login.microsoftonline.com/common/oauth2/v2.0/logout',
-          null,
-          {
-            headers: {
-              Authorization: `Bearer ${user.accessToken}`,
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-          },
-        )
-        .toPromise();
+      await this.webhookService.deleteSubscription(user);
       await this.userService.clearMailboxData(userEmail);
+
+      await this.httpService
+        .post(`${process.env.OUTLOOK_IDENTITY_API_BASE_URL}/logout`, null, {
+          headers: {
+            Authorization: `Bearer ${user.accessToken}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        })
+        .toPromise();
     } catch (error) {
       this.logger.error('Error logging out from Outlook:', error);
     }

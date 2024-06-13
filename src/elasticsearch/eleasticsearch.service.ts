@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { AppLogger } from 'src/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
-import { v4 as uuid } from 'uuid';
+import { User } from 'src/user/user.interface';
 
 @Injectable()
 export class ElasticService {
@@ -39,6 +39,101 @@ export class ElasticService {
       }
     } catch (err) {
       this.logger.error(err);
+    }
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    try {
+      const body = await this.elasticsearchService.search({
+        index: this.userIndex,
+        body: {
+          query: {
+            match_all: {}, // Retrieve all documents
+          },
+        },
+      });
+
+      return body.hits.hits.map((hit) => hit._source as User); // Return the hits array containing documents
+    } catch (error) {
+      this.logger.error(
+        `Error retrieving documents from ${this.userIndex}:`,
+        '',
+        '',
+        error,
+      );
+      return []; // Return empty array on error
+    }
+  }
+
+  async getUserByUserId(userId: string): Promise<User> {
+    if (!userId) {
+      throw new HttpException(
+        'userId required.',
+        HttpStatus.EXPECTATION_FAILED,
+      );
+    }
+    try {
+      const body = await this.elasticsearchService.search({
+        index: this.userIndex,
+        body: {
+          query: {
+            match: {
+              userId,
+            },
+          },
+          size: 1, // Limit the results to one document
+        },
+      });
+
+      if (body.hits.hits.length > 0) {
+        return body.hits.hits[0]._source as User;
+      } else {
+        return null; // No matching document found
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error retrieving User with userId: ${userId}`,
+        '',
+        '',
+        error,
+      );
+      throw error;
+    }
+  }
+
+  async getUserBySubscriptionId(subscriptionId: string): Promise<User> {
+    if (!subscriptionId) {
+      throw new HttpException(
+        'subscriptionId required.',
+        HttpStatus.EXPECTATION_FAILED,
+      );
+    }
+    try {
+      const body = await this.elasticsearchService.search({
+        index: this.userIndex,
+        body: {
+          query: {
+            match: {
+              subscriptionId,
+            },
+          },
+          size: 1, // Limit the results to one document
+        },
+      });
+
+      if (body.hits.hits.length > 0) {
+        return body.hits.hits[0]._source as User;
+      } else {
+        return null; // No matching document found
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error retrieving User with subscriptionId: ${subscriptionId}`,
+        '',
+        '',
+        error,
+      );
+      throw error;
     }
   }
 
@@ -196,10 +291,10 @@ export class ElasticService {
     };
   }
 
-  async indexUser(userEmail: string, user: any): Promise<void> {
+  async indexUser(userEmail: string, user: Partial<User>): Promise<void> {
     try {
       const existingUser: any = await this.getById(userEmail, this.userIndex);
-      const newUser = { id: existingUser ? existingUser.id : uuid(), ...user };
+      const newUser = { ...existingUser, ...user };
       await this.elasticsearchService.index({
         index: this.userIndex,
         op_type: 'index',

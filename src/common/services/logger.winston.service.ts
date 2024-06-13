@@ -1,5 +1,4 @@
 import 'winston-daily-rotate-file';
-
 import {
   ConsoleLogger,
   HttpException,
@@ -8,15 +7,14 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { WinstonModule } from 'nest-winston';
-
 import { ApplicationError } from '../errors';
-
 import winston = require('winston');
 
-Injectable();
+@Injectable()
 export class AppLogger extends ConsoleLogger implements LoggerService {
   private readonly logger;
   context?: string;
+
   public constructor(context?: string, options?: { timestamp?: boolean }) {
     super(context, options);
     if (process.env.APPNAME === undefined) {
@@ -56,13 +54,10 @@ export class AppLogger extends ConsoleLogger implements LoggerService {
         Appname: process.env.APPNAME || 'jio-unset',
       },
       transports: [
-        // Console log
         new winston.transports.Console({
           level: 'debug',
           handleExceptions: true,
         }),
-
-        // files log
         ...(process.env.LOGFILE
           ? [
               new winston.transports.DailyRotateFile({
@@ -78,7 +73,6 @@ export class AppLogger extends ConsoleLogger implements LoggerService {
             ]
           : []),
       ],
-
       exceptionHandlers: [new winston.transports.Console()],
     });
   }
@@ -87,29 +81,56 @@ export class AppLogger extends ConsoleLogger implements LoggerService {
     this.context = context;
   }
 
-  error(message: string, trace?: string, context?: string): void {
+  private formatError(
+    message: string,
+    trace?: string,
+    context?: string,
+    error?: Error | ApplicationError | HttpException,
+  ) {
+    return JSON.stringify({
+      timestamp: new Date().toISOString(),
+      context: context || this.context,
+      message,
+      trace,
+      error: error
+        ? {
+            name: error.constructor.name,
+            message: error.message,
+            stack: error.stack,
+          }
+        : undefined,
+    });
+  }
+
+  error(
+    message: string,
+    trace?: string,
+    context?: string,
+    error?: Error,
+  ): void {
     context = context || this.context;
-    this.logger.error(message, context);
+    const formattedError = this.formatError(message, trace, context, error);
+    this.logger.error(formattedError);
   }
 
   log(message: string, context?: string): void {
     context = context || this.context;
-    this.logger.log(message, context);
+    this.logger.log(message, { context });
   }
 
   warn(message: string, context?: string): void {
     context = context || this.context;
-    this.logger.warn(message, context);
+    this.logger.warn(message, { context });
   }
 
   info(message: string, context?: string): void {
     context = context || this.context;
-    this.logger.info(message, context);
+    this.logger.info(message, { context });
   }
 
   debug(message: string, context?: string): void {
     context = context || this.context;
-    this.logger.debug(message, context);
+    this.logger.debug(message, { context });
   }
 
   logError(
@@ -126,6 +147,7 @@ export class AppLogger extends ConsoleLogger implements LoggerService {
         error: {
           name: error.constructor.name,
           message: error.message,
+          stack: error.stack,
         },
       }),
       this.context,
@@ -140,7 +162,6 @@ export class AppLogger extends ConsoleLogger implements LoggerService {
         params: request.params,
         body: request.body,
         query: request.query,
-        // file: request.file,
         data: payload,
       }),
     );

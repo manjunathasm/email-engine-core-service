@@ -10,12 +10,15 @@
     body {
       padding-top: 4.5rem;
     }
-    .navbar-nav .nav-item + .nav-item {
+
+    .navbar-nav .nav-item+.nav-item {
       margin-left: 1rem;
     }
+
     .modal {
       display: none;
     }
+
     .modal.show {
       display: block;
     }
@@ -51,13 +54,7 @@
   <div class="container mx-auto mt-8">
     {{{ body }}}
   </div>
-<script>
-  // Toggle the navbar menu
-  document.getElementById('nav-toggle').addEventListener('click', () => {
-    const navContent = document.getElementById('nav-content');
-    navContent.classList.toggle('hidden');
-  });
-</script>
+  <script src="/scripts/global.js"></script>
 </body>
 
 </html>
